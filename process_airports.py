@@ -17,7 +17,7 @@ OUTPUT_FIELDNAMES = [
     "longitude_deg",
     "continent",
     "iso_country",
-    "iso_region",
+    "municipality",
     "icao_code",
     "gps_code",
 ]
@@ -54,7 +54,7 @@ def filter_airports(rows: Iterable[Dict[str, str]]) -> Tuple[List[Dict[str, str]
                 "longitude_deg": row.get("longitude_deg", "").strip(),
                 "continent": row.get("continent", "").strip(),
                 "iso_country": row.get("iso_country", "").strip(),
-                "iso_region": row.get("iso_region", "").strip(),
+                "municipality": row.get("municipality", "").strip(),
                 "icao_code": row.get("icao_code", "").strip(),
                 "gps_code": row.get("gps_code", "").strip(),
             }
@@ -113,5 +113,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    exit()
     main()
