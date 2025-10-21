@@ -1,26 +1,17 @@
 from __future__ import annotations
 
 import csv
+import json
 import re
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Set, Tuple
 
 
 DATA_DIR = Path(__file__).parent / "data"
 INPUT_COUNTRIES_CSV = DATA_DIR / "countries.csv"
 OUTPUT_CURATED_COUNTRIES_CSV = DATA_DIR / "curated_countries.csv"
 OUTPUT_CURATED_CONTINENTS_CSV = DATA_DIR / "curated_continents.csv"
-
-# Non-ISO alpha-2 codes we omit from the curated export.
-EXCLUDED_COUNTRY_CODES = {"XP"}
-
-# Friendly display names for specific ISO codes.
-NAME_OVERRIDES: Dict[str, str] = {
-    "CC": "Cocos Islands",
-    "EH": "Western Sahara",
-    "PS": "Palestine",
-    "SH": "Saint Helena & Tristan da Cunha",
-}
+COUNTRY_CORRECTIONS_PATH = DATA_DIR / "corrections" / "country_name_notes.json"
 
 
 # Basic mapping from OurAirports continent codes to human-friendly names
@@ -35,9 +26,36 @@ CONTINENT_CODE_TO_NAME: Dict[str, str] = {
 }
 
 
-def clean_country_name(code: str, name: str) -> str:
-    if code in NAME_OVERRIDES:
-        return NAME_OVERRIDES[code]
+def load_country_corrections() -> Tuple[Dict[str, str], Set[str]]:
+    """Load manual country overrides and removed codes."""
+    if not COUNTRY_CORRECTIONS_PATH.exists():
+        return {}, set()
+
+    data = json.loads(COUNTRY_CORRECTIONS_PATH.read_text(encoding="utf-8"))
+    name_overrides: Dict[str, str] = {}
+    removed_codes: Set[str] = set()
+
+    for code, payload in data.items():
+        if code == "removed_codes":
+            for removed in payload:
+                removed_codes.add((removed or "").strip().upper())
+            continue
+
+        curated = ""
+        if isinstance(payload, dict):
+            curated = (payload.get("curated_name") or "").strip()
+        elif isinstance(payload, str):
+            curated = payload.strip()
+        code = (code or "").strip().upper()
+        if code and curated:
+            name_overrides[code] = curated
+
+    return name_overrides, removed_codes
+
+
+def clean_country_name(code: str, name: str, overrides: Dict[str, str]) -> str:
+    if code in overrides:
+        return overrides[code]
     # Remove parenthetical descriptors and collapse whitespace.
     cleaned = re.sub(r"\s*\(.*?\)", "", name).strip()
     return re.sub(r"\s{2,}", " ", cleaned)
@@ -48,18 +66,19 @@ def load_countries(path: Path) -> List[Dict[str, str]]:
 
     Output rows include: code, name, continent (2-letter code).
     """
+    name_overrides, removed_codes = load_country_corrections()
     countries: List[Dict[str, str]] = []
     with path.open(mode="r", newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
             code = row.get("code", "").strip()
-            if not code or code in EXCLUDED_COUNTRY_CODES:
+            if not code or code.upper() in removed_codes:
                 continue
             name = row.get("name", "").strip()
             countries.append(
                 {
                     "code": code,
-                    "name": clean_country_name(code, name),
+                    "name": clean_country_name(code, name, name_overrides),
                     "continent": row.get("continent", "").strip(),
                 }
             )

@@ -13,9 +13,11 @@ Curated country and airport data—plus matching ISO flag assets—ready for dir
 4. `python validate_flags.py`
    - Verifies flag filenames use uppercase ISO codes.
    - Flags any countries missing an asset or extra assets without a country.
-5. `python build_sqlite.py`
+5. `python verify_timezones.py`
+   - Reports coverage of the timezone dataset against curated airports and highlights mismatched country codes in the source feed.
+6. `python build_sqlite.py`
    - Produces `data/globelog.sqlite` containing normalised tables and an FTS5 index for quick lookups.
-6. `python verify_sqlite.py`
+7. `python verify_sqlite.py`
    - Compares the SQLite contents back to the curated CSVs.
    - Smoke-tests a handful of full-text searches to confirm text landed intact.
 
@@ -26,14 +28,23 @@ Curated country and airport data—plus matching ISO flag assets—ready for dir
 - `data/curated_continents.csv`
   - 7 continent rows (`AF`, `AN`, `AS`, `EU`, `NA`, `OC`, `SA`).
 - `data/curated_airports.csv`
-  - 4,480 records containing: `iata`, `name`, `latitude_deg`, `longitude_deg`, `continent`, `iso_country`, `municipality`, `icao_code`, `gps_code`.
+  - 4,480 records containing: `iata`, `name`, `latitude_deg`, `longitude_deg`, `continent`, `iso_country`, `municipality`, `timezone`, `icao_code`, `gps_code`.
+- `data/corrections/country_name_notes.json`
+  - Documentation of manual country-name tweaks and any removed ISO codes.
+- `data/corrections/timezone_overrides.json`
+  - Manual fixes for timezone coverage (used by processing scripts and validators when the upstream dataset mislabels a code).
 - `data/globelog.sqlite`
-  - Tables: `continent`, `country`, `airport`, plus `airport_search` (FTS5 virtual table).
-  - Indices on `airport.country_code`, `airport.municipality`; `airport_search` enables instant text queries.
+  - Tables:
+    - `continent(code TEXT PRIMARY KEY, name TEXT)`
+    - `country(code TEXT PRIMARY KEY, name TEXT, continent_code TEXT REFERENCES continent(code) ON UPDATE CASCADE)`
+    - `airport(iata TEXT PRIMARY KEY, name TEXT, municipality TEXT, latitude REAL, longitude REAL, continent_code TEXT, country_code TEXT, timezone TEXT, icao_code TEXT, gps_code TEXT)`
+    - `airport_search` (FTS5 virtual table over `name`, `municipality`, `iata`, `icao_code`, `country_code`; linked to `airport` rows)
+  - Indices: `idx_airport_country` (`airport.country_code`), `idx_airport_municipality` (`airport.municipality`), `idx_airport_timezone` (`airport.timezone`).
 
 ### Snapshot (current build)
 - Countries without curated airports: `AD`, `AQ`, `AX`, `GS`, `HM`, `LI`, `MC`, `PN`, `PS`, `SM`, `TF`, `TK`, `VA`.
 - Flag coverage: every curated country has a matching asset; no extras in `flags/`.
+- Timezone coverage: 100 % of curated airports mapped to IANA identifiers (source mismatches highlighted by `verify_timezones.py` for manual review).
 
 ## SQLite Quick Reference
 - FTS5 uses tokenised (word-based) matching, not edit-distance “fuzzy” search. A query such as `airport_search MATCH 'dubai'` matches tokens containing “Dubai”; add your own fuzzy layer if you need typo tolerance.
@@ -50,3 +61,4 @@ Curated country and airport data—plus matching ISO flag assets—ready for dir
 ## Sources
 - Countries & airports: https://ourairports.com/data/
 - Flags: https://flagpedia.net/
+- Airport timezones: https://github.com/dereke/airport-timezone/blob/master/airports.json

@@ -53,6 +53,7 @@ def verify_database() -> None:
         "municipality",
         "continent",
         "iso_country",
+        "timezone",
         "icao_code",
         "gps_code",
     ]
@@ -67,6 +68,8 @@ def verify_database() -> None:
                 db_value = db_row["continent_code"]
             elif field == "iso_country":
                 db_value = db_row["country_code"]
+            elif field == "timezone":
+                db_value = (db_row["timezone"] or "").strip()
             else:
                 db_value = (db_row[field] or "").strip()
             if csv_value != db_value:
@@ -93,15 +96,18 @@ def verify_database() -> None:
     print("FTS sample searches:")
     for iata in sample_terms:
         airport_name = airports_csv[iata]["name"]
-        query = airport_name.split()[0]
+        token = airport_name.split()[0]
+        token = token.strip("'\"()[]{}")
+        if not token:
+            continue
         results = list(
             cur.execute(
                 "SELECT iata, name FROM airport_search WHERE airport_search MATCH ? LIMIT 3",
-                (query,),
+                (token,),
             )
         )
         formatted = ", ".join(f"{row['iata']}:{row['name']}" for row in results) or "no hits"
-        print(f"  '{query}' -> {formatted}")
+        print(f"  '{token}' -> {formatted}")
 
     conn.close()
 

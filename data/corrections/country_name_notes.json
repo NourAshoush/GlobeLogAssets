@@ -1,0 +1,25 @@
+{
+  "CC": {
+    "original_name": "Cocos (Keeling) Islands",
+    "curated_name": "Cocos Islands",
+    "notes": "Drop parenthetical for cleaner display."
+  },
+  "EH": {
+    "original_name": "Western Sahara (disputed territory)",
+    "curated_name": "Western Sahara",
+    "notes": "Remove dispute note for concise name."
+  },
+  "PS": {
+    "original_name": "Palestinian Territory",
+    "curated_name": "Palestine",
+    "notes": "Use commonly recognised short form."
+  },
+  "SH": {
+    "original_name": "Saint Helena, Ascension and Tristan da Cunha",
+    "curated_name": "Saint Helena & Tristan da Cunha",
+    "notes": "Shorten and add ampersand for readability."
+  },
+  "removed_codes": [
+    "XP"
+  ]
+}

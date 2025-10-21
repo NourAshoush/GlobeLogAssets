@@ -50,12 +50,14 @@ def create_schema(conn: sqlite3.Connection) -> None:
             longitude REAL NOT NULL,
             continent_code TEXT NOT NULL REFERENCES continent(code),
             country_code TEXT NOT NULL REFERENCES country(code),
+            timezone TEXT,
             icao_code TEXT,
             gps_code TEXT
         );
 
         CREATE INDEX idx_airport_country ON airport(country_code);
         CREATE INDEX idx_airport_municipality ON airport(municipality);
+        CREATE INDEX idx_airport_timezone ON airport(timezone);
         """
     )
 
@@ -87,7 +89,7 @@ def coerce_float(value: str) -> float:
 
 
 def populate_airports(conn: sqlite3.Connection) -> None:
-    rows: Iterable[Tuple[str, str, str | None, float, float, str, str, str | None, str | None]] = (
+    rows: Iterable[Tuple[str, str, str | None, float, float, str, str, str | None, str | None, str | None]] = (
         (
             row["iata"],
             row["name"],
@@ -96,6 +98,7 @@ def populate_airports(conn: sqlite3.Connection) -> None:
             coerce_float(row.get("longitude_deg", "0")),
             row.get("continent", ""),
             row.get("iso_country", ""),
+            row.get("timezone") or None,
             row.get("icao_code") or None,
             row.get("gps_code") or None,
         )
@@ -111,9 +114,10 @@ def populate_airports(conn: sqlite3.Connection) -> None:
             longitude,
             continent_code,
             country_code,
+            timezone,
             icao_code,
             gps_code
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         list(rows),
     )
