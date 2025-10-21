@@ -77,11 +77,12 @@ def load_timezones(path: Path) -> Dict[str, str]:
 def filter_airports(
     rows: Iterable[Dict[str, str]],
     timezones: Dict[str, str],
-) -> Tuple[List[Dict[str, str]], Counter, int, int]:
+) -> Tuple[List[Dict[str, str]], Counter, int, int, int]:
     filtered: List[Dict[str, str]] = []
     type_counts: Counter = Counter()
     missing_iata = 0
     missing_timezone = 0
+    missing_municipality = 0
 
     for row in rows:
         airport_type = row.get("type", "").strip()
@@ -92,6 +93,10 @@ def filter_airports(
         if not iata_code:
             missing_iata += 1
             continue
+
+        municipality = (row.get("municipality") or "").strip()
+        if not municipality:
+            missing_municipality += 1
 
         timezone = timezones.get(iata_code, "")
         if not timezone:
@@ -106,7 +111,7 @@ def filter_airports(
                 "longitude_deg": row.get("longitude_deg", "").strip(),
                 "continent": row.get("continent", "").strip(),
                 "iso_country": row.get("iso_country", "").strip(),
-                "municipality": row.get("municipality", "").strip(),
+                "municipality": municipality,
                 "timezone": timezone,
                 "icao_code": row.get("icao_code", "").strip(),
                 "gps_code": row.get("gps_code", "").strip(),
@@ -114,7 +119,7 @@ def filter_airports(
         )
 
     filtered.sort(key=lambda airport: (airport["iata"], airport["name"]))
-    return filtered, type_counts, missing_iata, missing_timezone
+    return filtered, type_counts, missing_iata, missing_timezone, missing_municipality
 
 
 def write_curated_airports(path: Path, airports: List[Dict[str, str]]) -> None:
@@ -129,6 +134,7 @@ def summarize(
     type_counts: Counter,
     missing_iata: int,
     missing_timezone: int,
+    missing_municipality: int,
 ) -> str:
     """Create a human-friendly summary of the curated airports."""
     countries = Counter(airport["iso_country"] for airport in airports)
@@ -141,6 +147,7 @@ def summarize(
         f"Kept {len(airports)} airports (medium: {medium_count}, large: {large_count}). "
         f"Skipped {missing_iata} medium/large airports without IATA codes. "
         f"Missing timezones for {missing_timezone} airports. "
+        f"Missing municipalities for {missing_municipality} airports. "
         f"Top countries by count: {top_countries}."
     )
 
@@ -150,7 +157,7 @@ def main() -> None:
 
     all_rows = list(load_airports(INPUT_AIRPORTS_CSV))
     timezones = load_timezones(AIRPORT_TIMEZONES_JSON)
-    filtered, type_counts, missing_iata, missing_timezone = filter_airports(
+    filtered, type_counts, missing_iata, missing_timezone, missing_municipality = filter_airports(
         all_rows, timezones
     )
     write_curated_airports(OUTPUT_CURATED_AIRPORTS_CSV, filtered)
@@ -160,7 +167,7 @@ def main() -> None:
         f"Wrote {len(filtered)} → {OUTPUT_CURATED_AIRPORTS_CSV.name}."
     )
     if filtered:
-        print(summarize(filtered, type_counts, missing_iata, missing_timezone))
+        print(summarize(filtered, type_counts, missing_iata, missing_timezone, missing_municipality))
         sample = filtered[:5]
         print("Sample (first 5):")
         for airport in sample:

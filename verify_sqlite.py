@@ -5,6 +5,7 @@ import random
 import sqlite3
 from pathlib import Path
 from typing import Dict, List
+import re
 
 
 ROOT = Path(__file__).parent
@@ -96,8 +97,10 @@ def verify_database() -> None:
     print("FTS sample searches:")
     for iata in sample_terms:
         airport_name = airports_csv[iata]["name"]
-        token = airport_name.split()[0]
-        token = token.strip("'\"()[]{}")
+        match = re.search(r"[A-Za-z0-9]+", airport_name)
+        if not match:
+            continue
+        token = match.group(0)
         if not token:
             continue
         results = list(
